@@ -1,0 +1,86 @@
+Class 20 Pre-Class: Concurrency Bugs and Debugging
+
+Please read and understand the following (no book chapters for this class):
+
+What’s Concurrency and Why Does It Matter?
+Concurrency is when a system runs multiple tasks—or threads—at the same time, like a web server handling tons of user requests simultaneously. It’s awesome for speed, but if those threads don’t play nice, you get concurrency bugs. Think of it like a team of security analysts: if two try to update the same log file at once without coordinating, you might lose data—or worse, let an attacker sneak in. In cybersecurity, these bugs can lead to vulnerabilities like race conditions (more on that later) or system freezes, so understanding them is key to building stuff that’s both fast and secure.
+Non-Deadlock Bugs: Trouble Without a Freeze
+First up are non-deadlock bugs. These don’t lock up your system, but they can still mess things up big time. There are two main types: atomicity violations and order violations.
+
+Atomicity Violations
+Picture this: you’re updating a password in a system, and that update should happen all at once—old password out, new password in. That’s atomicity: the idea that some tasks need to be one uninterrupted step. Now, imagine two threads (like two programs running at once) try to update that password simultaneously without any rules. One might overwrite the other halfway through, leaving a garbled password—or no change at all! That’s an atomicity violation.
+In cybersecurity, this could let an attacker slip through a half-updated security check. To fix it, we use locks—think of them as a “Do Not Disturb” sign. Only one thread gets to mess with the password at a time. Here’s a simple C-like example you might recognize:
+lock(password_lock);    // Only one thread gets in
+update_password(new_value);
+unlock(password_lock);  // Let the next thread go
+Without that lock, chaos reigns.
+
+Order Violations
+Next, order violations happen when tasks don’t follow the right sequence. Imagine you’re setting up a secure connection: you need to generate an encryption key before you encrypt the data. If one thread starts encrypting while another is still making the key, you might encrypt with garbage—or nothing at all.
+In a security system, this could leak sensitive info. The fix? Synchronization, like using a flag to say, “Hey, the key’s ready—go!” In C, you might see something like this:
+c
+while (!key_ready) {    // Wait until the key is set
+    // Chill out
+}
+encrypt_data();
+This keeps things in line without overcomplicating it.
+Deadlock Bugs: When Everything Stops
+Now, let’s tackle deadlock bugs. These are nastier because they freeze your system solid. Imagine two threads, each holding a resource the other needs—like two guards with keys to different doors, each waiting for the other to unlock theirs. They’re stuck forever, and that’s a deadlock.
+What Causes Deadlock?
+For a deadlock to happen, four things need to line up:
+Mutual Exclusion: Only one thread can hold a resource at a time (e.g., one key per lock).
+Hold and Wait: A thread grabs one resource and waits for another (e.g., holding Lock A, waiting for Lock B).
+No Preemption: You can’t snatch resources away—threads have to let go on their own.
+Circular Wait: Threads form a loop, each waiting for the next one’s resource (e.g., Thread 1 waits for Thread 2’s lock, and Thread 2 waits for Thread 1’s).
+If all four are true, boom—deadlock.
+A Quick Example
+Here’s a scenario in C-like pseudocode:
+Thread 1:
+c
+lock(A);
+lock(B);    // Waits if B is taken
+// Do stuff
+unlock(B);
+unlock(A);
+Thread 2:
+c
+lock(B);
+lock(A);    // Waits if A is taken
+// Do stuff
+unlock(A);
+unlock(B);
+If Thread 1 grabs Lock A and Thread 2 grabs Lock B at the same time, they’ll each wait for the other forever—deadlock city.
+
+Fixing Deadlocks
+We’ve got a few ways to handle this:
+Prevention
+Stop deadlock before it starts by breaking one of those four conditions. The easiest trick? Make every thread grab locks in the same order—like always locking A before B. Rewrite that example:
+Both Threads:
+c
+lock(A);    // A first, always
+lock(B);    // Then B
+// Do stuff
+unlock(B);
+unlock(A);
+Now, if Thread 1 has Lock A, Thread 2 waits for A instead of grabbing B and causing a loop. No circular wait, no deadlock.
+
+Avoidance
+This is about planning ahead—only letting threads run when you’re sure they won’t deadlock. It’s tricky and not super common in everyday coding, so we’ll skip the deep dive.
+Detection and Recovery
+Let deadlocks happen, then spot them (e.g., check if threads are stuck in a loop) and fix them—like killing one thread to free things up. It works if deadlocks are rare.
+Why This Hits Cybersecurity Hard
+Concurrency bugs aren’t just tech headaches—they’re security risks:
+Race Conditions: When atomicity or order goes wrong, you get a race condition. An attacker could exploit this to, say, trick a system into giving them admin access by timing their move just right.
+Deadlocks: These can freeze a system, causing a denial of service—think a website crashing so no one can log in. Not a hack, but still a win for the bad guys.
+
+You can fight back with tools like:
+Static Analysis: Programs that scan your code for bugs before it runs.
+Testing: Running your system under stress to catch these issues.
+Wrapping It Up
+Non-Deadlock Bugs:
+Atomicity Violations: Tasks get interrupted. Lock ‘em down!
+Order Violations: Tasks run out of order. Sync ‘em up!
+Deadlock Bugs:
+Four conditions make them happen. Break one—like ordering locks—and they’re gone.
+Prevention’s your best bet, but detection works too.
+Concurrency is everywhere in systems you’ll secure—servers, apps, even malware defenses.
